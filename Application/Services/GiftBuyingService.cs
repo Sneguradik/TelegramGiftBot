@@ -14,10 +14,15 @@ public class GiftBuyingService(ITelegramGiftBuyer buyer, ITelegramClientWalletRe
             .GetByClientIdAsync(recipient.ClientId, true, cancellationToken);
 
         if (wallet == null) return null;
+
+        if (wallet.Amount < gift.Price) return null;
+        
+        lock (wallet)
+        {
+            wallet.Amount -= gift.Price;
+        }
         
         await buyer.BuyGiftAsync(gift, recipient, cancellationToken);
-        
-        wallet.Amount -= gift.Price;
         
         await uof.SaveChangesAsync(cancellationToken);
         
