@@ -98,6 +98,7 @@ public class AutoBuyingService(
         }
 
         await FlushTransactionsAsync(cancellationToken);
+        await uof.SaveChangesAsync(cancellationToken);
         logger.LogInformation("✅ AutoBuyingService завершил работу");
     }
 
@@ -133,11 +134,11 @@ public class AutoBuyingService(
             logger.LogInformation("🎁 Куплено {Count} подарков {GiftId} для инвойса #{InvoiceId}",
                 successful.Count, gift.Id, invoice.Id);
 
-            if (invoice.Amount <= 0)
-            {
-                logger.LogInformation("✅ Инвойс #{InvoiceId} полностью исполнен", invoice.Id);
-                break;
-            }
+            if (invoice.Amount > 0) continue;
+            
+            await giftInvoiceRepo.DeleteAsync(invoice.Id, cancellationToken);
+            logger.LogInformation("✅ Инвойс #{InvoiceId} полностью исполнен", invoice.Id);
+            break;
         }
     }
 
@@ -152,8 +153,7 @@ public class AutoBuyingService(
 
         foreach (var tx in txs)
             await giftTransactionRepo.AddAsync(tx, cancellationToken);
-
-        await uof.SaveChangesAsync(cancellationToken);
+        
         logger.LogInformation("💾 Сохранено {Count} транзакций", txs.Count);
     }
 }
